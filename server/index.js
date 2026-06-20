@@ -24,9 +24,9 @@ app.use(express.json({ limit: '50mb' }));
 // --- Image Proxy Routes (replaces Vite dev server proxies in production) ---
 
 // Proxy for FotMob images
-app.get('/fotmob-images/*', async (req, res) => {
+app.get('/fotmob-images/:path(*)', async (req, res) => {
     try {
-        const imagePath = req.params[0];
+        const imagePath = req.params.path;
         const imageUrl = `https://images.fotmob.com/${imagePath}`;
         const response = await fetch(imageUrl);
         if (!response.ok) {
@@ -46,9 +46,9 @@ app.get('/fotmob-images/*', async (req, res) => {
 });
 
 // Proxy for TheSportsDB images
-app.get('/sportsdb-images/*', async (req, res) => {
+app.get('/sportsdb-images/:path(*)', async (req, res) => {
     try {
-        const imagePath = req.params[0];
+        const imagePath = req.params.path;
         const imageUrl = `https://r2.thesportsdb.com/${imagePath}`;
         const response = await fetch(imageUrl);
         if (!response.ok) {
@@ -180,6 +180,11 @@ app.get('/api/matches/:id', (req, res) => {
 
 // POST /api/matches - Saves a new match
 app.post('/api/matches', (req, res) => {
+    // Block uploads in production
+    if (process.env.RENDER) {
+        return res.status(403).json({ error: 'Read-only mode: Uploads are disabled on the live site.' });
+    }
+    
     try {
         const matchData = req.body;
         if (!matchData.id) {
@@ -207,6 +212,11 @@ app.post('/api/matches', (req, res) => {
 
 // DELETE /api/matches/:id - Deletes a match
 app.delete('/api/matches/:id', (req, res) => {
+    // Block deletions in production
+    if (process.env.RENDER) {
+        return res.status(403).json({ error: 'Read-only mode: Deletions are disabled on the live site.' });
+    }
+
     try {
         const filePath = getFilePath(req.params.id);
         if (fs.existsSync(filePath)) {
