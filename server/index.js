@@ -24,9 +24,9 @@ app.use(express.json({ limit: '50mb' }));
 // --- Image Proxy Routes (replaces Vite dev server proxies in production) ---
 
 // Proxy for FotMob images
-app.get('/fotmob-images/:path(*)', async (req, res) => {
+app.use('/fotmob-images', async (req, res) => {
     try {
-        const imagePath = req.params.path;
+        const imagePath = req.path.replace(/^\//, '');
         const imageUrl = `https://images.fotmob.com/${imagePath}`;
         const response = await fetch(imageUrl);
         if (!response.ok) {
@@ -46,9 +46,9 @@ app.get('/fotmob-images/:path(*)', async (req, res) => {
 });
 
 // Proxy for TheSportsDB images
-app.get('/sportsdb-images/:path(*)', async (req, res) => {
+app.use('/sportsdb-images', async (req, res) => {
     try {
-        const imagePath = req.params.path;
+        const imagePath = req.path.replace(/^\//, '');
         const imageUrl = `https://r2.thesportsdb.com/${imagePath}`;
         const response = await fetch(imageUrl);
         if (!response.ok) {
@@ -236,7 +236,7 @@ const distPath = path.join(__dirname, '..', 'dist');
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
     // Serve index.html for all non-API routes (SPA fallback)
-    app.get('*', (req, res) => {
+    app.get(/(.*)/, (req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
     });
 }
