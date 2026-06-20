@@ -197,10 +197,17 @@ const MatchAnalysis = ({ onViewChange }) => {
     }, []);
 
     useEffect(() => {
+        const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
         try {
             const saved = localStorage.getItem('publishedVisualizations');
-            if (saved) setPublishedVisuals(JSON.parse(saved));
-        } catch { }
+            if (saved !== null) {
+                setPublishedVisuals(JSON.parse(saved));
+            } else {
+                setPublishedVisuals(ALL_VISUALS);
+            }
+        } catch { 
+            setPublishedVisuals(ALL_VISUALS);
+        }
     }, []);
 
     const TEAM_COLORS = {
@@ -1032,7 +1039,7 @@ const MatchAnalysis = ({ onViewChange }) => {
                                                     </GlobalErrorBoundary>
 
                                                     {/* 3 & 4. Dominance Zones side by side */}
-                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', width: '100%' }}>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: isCompareMode ? '1fr' : '1fr 1fr', gap: '1.5rem', width: '100%' }}>
                                                         <div className="glass-panel" style={{ padding: '1.5rem', minWidth: 0 }}>
                                                             <h3 className="section-title" style={{ margin: '0 0 1rem 0' }}>Build-Up Dominance Zones</h3>
                                                             <GlobalErrorBoundary>
@@ -1073,7 +1080,7 @@ const MatchAnalysis = ({ onViewChange }) => {
                                                 <h2 style={{ margin: 0, fontSize: '1.5rem', color: TEAM_COLORS[team] || '#fff' }}>{team}</h2>
                                             </div>
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: isCompareMode ? '1fr' : '1fr 1fr', gap: '1.5rem' }}>
 
                                                 {/* 1. Shot Map */}
                                                 {!isLeagueView && teamData.some(e => e.typeId === 13 || e.typeId === 14 || e.typeId === 15 || e.typeId === 16) && (

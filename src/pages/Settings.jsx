@@ -31,6 +31,7 @@ import DefenceRadarChart from '../components/visualizations/DefenceRadarChart';
 import TransitionRadarChart from '../components/visualizations/TransitionRadarChart';
 import AttackingTransitionScatterChart from '../components/visualizations/AttackingTransitionScatterChart';
 import DefensiveTransitionScatterChart from '../components/visualizations/DefensiveTransitionScatterChart';
+import LeagueBdpChart from '../components/visualizations/LeagueBdpChart';
 import SetPieceTable from '../components/visualizations/SetPieceTable';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { leagueStandings } from '../data/mockData';
@@ -463,11 +464,12 @@ const Settings = () => {
     };
 
     const [publishedVisuals, setPublishedVisuals] = useState(() => {
+        const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
         try {
             const saved = localStorage.getItem('publishedVisualizations');
-            return saved ? JSON.parse(saved) : [];
+            return saved !== null ? JSON.parse(saved) : ALL_VISUALS;
         } catch {
-            return [];
+            return ALL_VISUALS;
         }
     });
 
@@ -1139,6 +1141,41 @@ const Settings = () => {
                                                 localTeamStats={mockLeagueDefenceMetrics?.leagueData?.['Tromsø'] || null}
                                                 globalTeamStats={mockLeagueDefenceMetrics?.leagueData?.['League Average'] || null}
                                                 totalTeams={16}
+                                            />
+                                        </ErrorBoundary>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!hiddenPlaygroundVisuals.includes('BdpChart') && (
+                                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', borderStyle: 'dashed', borderWidth: '2px', borderColor: 'var(--color-border)', backgroundColor: 'transparent', padding: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <span style={{ padding: '4px 8px', background: 'rgba(56,189,248,0.1)', color: 'var(--color-accent-blue)', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>NEW</span>
+                                            <h4 style={{ margin: 0, fontSize: '1.1rem' }}>BDP Chart</h4>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => toggleHiddenVisual('BdpChart', true)}
+                                                style={{ padding: '0.5rem 1rem', backgroundColor: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', transition: 'all 0.2s ease' }}
+                                                title="Hide from playground and keep in folder"
+                                            >
+                                                📁 Place in Folder
+                                            </button>
+                                            <button
+                                                onClick={() => handlePublish('BdpChart')}
+                                                style={{ padding: '0.5rem 1rem', backgroundColor: publishedVisuals.includes('BdpChart') ? 'rgba(56,189,248,0.1)' : 'var(--color-accent-blue)', color: publishedVisuals.includes('BdpChart') ? 'var(--color-accent-blue)' : '#000', border: publishedVisuals.includes('BdpChart') ? '1px solid var(--color-accent-blue)' : 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', transition: 'all 0.2s ease' }}
+                                            >
+                                                {publishedVisuals.includes('BdpChart') ? '✓ Published' : 'Publish to Dashboard'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={playgroundScaleStyle}>
+                                        <ErrorBoundary>
+                                            <LeagueBdpChart 
+                                                leagueData={mockLeagueDefenceMetrics?.leagueData}
+                                                getBadge={getCachedBadge}
+                                                selectedTeam={null}
                                             />
                                         </ErrorBoundary>
                                     </div>
