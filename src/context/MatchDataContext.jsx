@@ -69,6 +69,13 @@ export const MatchDataProvider = ({ children }) => {
 
         const getAlias = (name) => teamAliases[name] || name;
 
+        if (loadedMatches.length > 0) {
+            newStandings.forEach(team => {
+                team.p = 0; team.w = 0; team.d = 0; team.l = 0;
+                team.gf = 0; team.ga = 0; team.gd = 0; team.pts = 0;
+            });
+        }
+
         loadedMatches.forEach(lm => {
             if (lm.homeScore !== undefined && lm.awayScore !== undefined && lm.homeScore !== '' && lm.awayScore !== '') {
                 const hScore = parseInt(lm.homeScore);
@@ -76,9 +83,7 @@ export const MatchDataProvider = ({ children }) => {
                 
                 const matchIndex = newMatches.findIndex(m => getAlias(m.homeTeam) === getAlias(lm.homeTeam) && getAlias(m.awayTeam) === getAlias(lm.awayTeam) && m.competition === lm.competition);
                 
-                let wasPreviouslyPlayed = false;
                 if (matchIndex !== -1) {
-                    wasPreviouslyPlayed = newMatches[matchIndex].score !== null && newMatches[matchIndex].status === "Full Time";
                     newMatches[matchIndex] = {
                         ...newMatches[matchIndex],
                         score: `${hScore}-${aScore}`,
@@ -86,13 +91,17 @@ export const MatchDataProvider = ({ children }) => {
                     };
                 }
 
-                if (lm.competition === 'Eliteserien' && !wasPreviouslyPlayed) {
+                if (lm.competition === 'Eliteserien') {
                     const homeTeamStats = newStandings.find(t => t.team === getAlias(lm.homeTeam));
                     const awayTeamStats = newStandings.find(t => t.team === getAlias(lm.awayTeam));
                     
                     if (homeTeamStats && awayTeamStats) {
                         homeTeamStats.p += 1;
                         awayTeamStats.p += 1;
+                        homeTeamStats.gf += hScore;
+                        homeTeamStats.ga += aScore;
+                        awayTeamStats.gf += aScore;
+                        awayTeamStats.ga += hScore;
                         homeTeamStats.gd += (hScore - aScore);
                         awayTeamStats.gd += (aScore - hScore);
                         

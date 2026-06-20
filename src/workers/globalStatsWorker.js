@@ -26,9 +26,8 @@ self.onmessage = async (e) => {
             }
 
             // 1. Fetch all match events concurrently
-            // To prevent overwhelming the backend, we fetch in chunks if needed, 
-            // but for a local API, Promise.all usually handles a few hundred fast requests well.
-            const fetchPromises = leagueMatches.map(async (m) => {
+            // To prevent overwhelming the backend, we fetch in chunks
+            const fetchMatchData = async (m) => {
                 const evts = await getMatchEvents(m.id);
                 if (!evts) return [];
 
@@ -36,8 +35,6 @@ self.onmessage = async (e) => {
                 const homeId = m.homeContestantId || fallbackIds[0];
                 const awayId = m.awayContestantId || fallbackIds[1];
 
-                // Mutate the objects to add matchId and teamName to save memory allocation 
-                // compared to spreading { ...ev } 400,000 times
                 for (let i = 0; i < evts.length; i++) {
                     const ev = evts[i];
                     ev.matchId = m.id;
@@ -52,9 +49,15 @@ self.onmessage = async (e) => {
                     ev.teamName = resolvedTeamName;
                 }
                 return evts;
-            });
+            };
 
-            const allEvtsArrays = await Promise.all(fetchPromises);
+            const allEvtsArrays = [];
+            const chunkSize = 10;
+            for (let i = 0; i < leagueMatches.length; i += chunkSize) {
+                const chunk = leagueMatches.slice(i, i + chunkSize);
+                const results = await Promise.all(chunk.map(m => fetchMatchData(m)));
+                allEvtsArrays.push(...results);
+            }
             
             // Flatten the arrays
             const allEvts = [];
