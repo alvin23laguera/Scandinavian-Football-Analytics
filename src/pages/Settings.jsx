@@ -464,7 +464,7 @@ const Settings = () => {
     };
 
     const [publishedVisuals, setPublishedVisuals] = useState(() => {
-        const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
+        const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'PossessionStyleChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
         try {
             const saved = localStorage.getItem('publishedVisualizations');
             if (saved !== null) {

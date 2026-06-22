@@ -197,7 +197,7 @@ const MatchAnalysis = ({ onViewChange }) => {
     }, []);
 
     useEffect(() => {
-        const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
+        const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'PossessionStyleChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
         try {
             const saved = localStorage.getItem('publishedVisualizations');
             if (saved !== null) {
@@ -1310,7 +1310,7 @@ const MatchAnalysis = ({ onViewChange }) => {
                                                                 <PpdaCard 
                                                                     teamName={team}
                                                                     ppdaValue={leagueDefenceStats?.leagueData?.[team]?.raw?.ppda || globalLeagueDefenceStats?.leagueData?.[team]?.raw?.ppda || 0}
-                                                                    rank={leagueDefenceStats?.leagueData?.[team]?.rank?.ppda || globalLeagueDefenceStats?.leagueData?.[team]?.rank?.ppda || 0}
+                                                                    rank={(() => { const sorted = Object.entries(globalLeagueDefenceStats?.leagueData || {}).filter(([name]) => name !== 'League Average').map(([name, data]) => ({ teamName: name, ppda: data.raw?.ppda || 0 })).sort((a, b) => a.ppda - b.ppda); const idx = sorted.findIndex(t => t.teamName === team); return idx !== -1 ? idx + 1 : 0; })()}
                                                                     totalTeams={16}
                                                                     getBadge={getBadge}
                                                                     selectedFixturesCount={teamMatchIds?.length || 0}
