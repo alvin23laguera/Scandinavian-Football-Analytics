@@ -11,7 +11,8 @@ import {
     calculateLeagueBdpStatsWorker,
     calculateLeagueDefensiveHeightWorker,
     calculateLeagueSetPieceTable,
-    calculateLeagueTopPerformers
+    calculateLeagueTopPerformers,
+    calculateLeagueStandingsFromEvents
 } from '../utils/dataMapper';
 
 self.onmessage = async (e) => {
@@ -93,6 +94,7 @@ self.onmessage = async (e) => {
             const leagueDefensiveHeight = calculateLeagueDefensiveHeightWorker(allEvts, loadedMatches, isTeamMatchLocal);
             const setPieceTable = calculateLeagueSetPieceTable(allEvts, loadedMatches, isTeamMatchLocal);
             const topPerformers = calculateLeagueTopPerformers(allEvts);
+            const realStandings = calculateLeagueStandingsFromEvents(allEvts, loadedMatches);
 
             // 3. Return the processed aggregate data
             self.postMessage({
@@ -110,7 +112,8 @@ self.onmessage = async (e) => {
                     globalBdpLeagueStats: bdpLeagueStats,
                     globalLeagueDefensiveHeight: leagueDefensiveHeight,
                     globalLeagueSetPieceTable: setPieceTable,
-                    globalTopPerformers: topPerformers
+                    globalTopPerformers: topPerformers,
+                    globalLeagueStandings: realStandings
                 }
             });
 

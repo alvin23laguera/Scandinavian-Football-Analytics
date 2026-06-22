@@ -3221,3 +3221,61 @@ export const calculateLeagueTopPerformers = (events) => {
         recoveries: sortAndTop5([...playerList], 'recoveriesPerGame')
     };
 };
+
+export const calculateLeagueStandingsFromEvents = (events, matches) => {
+    const standingsMap = {};
+    matches.forEach(m => {
+        if (m.competition === 'Eliteserien') {
+            if (!standingsMap[m.homeTeam]) standingsMap[m.homeTeam] = { team: m.homeTeam, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+            if (!standingsMap[m.awayTeam]) standingsMap[m.awayTeam] = { team: m.awayTeam, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+        }
+    });
+
+    const matchGoals = {};
+    events.forEach(e => {
+        if (e.typeId === 16 && e.matchId) { 
+            const isOwnGoal = getQualifiers(e).some(q => q.qualifierId === 28);
+            if (!matchGoals[e.matchId]) matchGoals[e.matchId] = { homeScore: 0, awayScore: 0 };
+            
+            if (e.teamName === e.homeTeam) {
+                if (isOwnGoal) matchGoals[e.matchId].awayScore++;
+                else matchGoals[e.matchId].homeScore++;
+            } else if (e.teamName === e.awayTeam) {
+                if (isOwnGoal) matchGoals[e.matchId].homeScore++;
+                else matchGoals[e.matchId].awayScore++;
+            }
+        }
+    });
+
+    const processedMatches = new Set(events.map(e => e.matchId).filter(Boolean));
+    
+    matches.forEach(m => {
+        if (m.competition === 'Eliteserien' && processedMatches.has(m.id)) {
+            const mg = matchGoals[m.id] || { homeScore: 0, awayScore: 0 };
+            const homeT = standingsMap[m.homeTeam];
+            const awayT = standingsMap[m.awayTeam];
+            
+            if (homeT && awayT) {
+                homeT.p++; awayT.p++;
+                homeT.gf += mg.homeScore; awayT.gf += mg.awayScore;
+                homeT.ga += mg.awayScore; awayT.ga += mg.homeScore;
+                homeT.gd += (mg.homeScore - mg.awayScore);
+                awayT.gd += (mg.awayScore - mg.homeScore);
+                
+                if (mg.homeScore > mg.awayScore) { homeT.w++; homeT.pts += 3; awayT.l++; }
+                else if (mg.homeScore < mg.awayScore) { awayT.w++; awayT.pts += 3; homeT.l++; }
+                else { homeT.d++; awayT.d++; homeT.pts += 1; awayT.pts += 1; }
+            }
+        }
+    });
+
+    const standingsArr = Object.values(standingsMap).sort((a, b) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (b.gd !== a.gd) return b.gd - a.gd;
+        return b.gf - a.gf;
+    });
+
+    standingsArr.forEach((t, i) => t.pos = i + 1);
+    return standingsArr;
+};
+

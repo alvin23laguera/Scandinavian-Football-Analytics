@@ -1,8 +1,15 @@
 import React from 'react';
 import { useMatchData } from '../context/MatchDataContext';
+import { leagueStandings as mockStandings } from '../data/mockData';
+
+const badgeMap = mockStandings.reduce((acc, curr) => {
+    acc[curr.team] = curr.badgeUrl;
+    return acc;
+}, {});
 
 const LeagueTable = () => {
-    const { derivedStandings: leagueStandings } = useMatchData();
+    const { derivedStandings, globalLeagueStandings } = useMatchData();
+    const leagueStandings = globalLeagueStandings || derivedStandings;
     return (
         <div className="glass-panel" style={{ padding: '1rem', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
@@ -32,7 +39,7 @@ const LeagueTable = () => {
                             <td style={{ padding: '0.5rem', fontWeight: 'normal' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <img
-                                        src={team.badgeUrl}
+                                        src={team.badgeUrl || badgeMap[team.team]}
                                         alt={`${team.team} badge`}
                                         style={{ width: '20px', height: '20px', objectFit: 'contain' }}
                                     />

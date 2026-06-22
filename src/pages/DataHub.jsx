@@ -427,6 +427,8 @@ const DataHub = () => {
             const ids = fileState.contestantIds || [];
             let homeContestantId = ids[0] || null;
             let awayContestantId = ids[1] || null;
+            let extHomeScore = fileState.homeScore;
+            let extAwayScore = fileState.awayScore;
 
             // Attempt intelligent extraction from the parsed JSON text
             try {
@@ -445,6 +447,10 @@ const DataHub = () => {
                     const aC = data.liveData.matchDetails.contestant.find(c => c.position === 'away');
                     if (hC) homeContestantId = hC.id;
                     if (aC) awayContestantId = aC.id;
+                    if (data.liveData.matchDetails.scores && data.liveData.matchDetails.scores.total) {
+                        extHomeScore = data.liveData.matchDetails.scores.total.home !== undefined ? data.liveData.matchDetails.scores.total.home : extHomeScore;
+                        extAwayScore = data.liveData.matchDetails.scores.total.away !== undefined ? data.liveData.matchDetails.scores.total.away : extAwayScore;
+                    }
                 } else if (data.Games && data.Games.Game) {
                     homeContestantId = data.Games.Game.home_team_id || homeContestantId;
                     awayContestantId = data.Games.Game.away_team_id || awayContestantId;
@@ -458,8 +464,8 @@ const DataHub = () => {
                 matchTitle: fileState.matchTitle,
                 homeTeam: fileState.homeTeam,
                 awayTeam: fileState.awayTeam,
-                homeScore: fileState.homeScore,
-                awayScore: fileState.awayScore,
+                homeScore: extHomeScore,
+                awayScore: extAwayScore,
                 homeContestantId,
                 awayContestantId,
                 competition: fileState.competition,

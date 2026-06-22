@@ -11,6 +11,7 @@ export const MatchDataProvider = ({ children }) => {
     const [loadedMatches, setLoadedMatches] = useState([]);
     const [derivedMatches, setDerivedMatches] = useState(mockMatches);
     const [derivedStandings, setDerivedStandings] = useState(mockStandings);
+    const [globalLeagueStandings, setGlobalLeagueStandings] = useState(null);
     const [seasonPPDA, setSeasonPPDA] = useState([]);
     const [globalLeagueAttackStats, setGlobalLeagueAttackStats] = useState(null);
     const [globalLeagueDefenceStats, setGlobalLeagueDefenceStats] = useState(null);
@@ -89,11 +90,26 @@ export const MatchDataProvider = ({ children }) => {
                         score: `${hScore}-${aScore}`,
                         status: 'Full Time'
                     };
+                } else {
+                    newMatches.push({
+                        ...lm,
+                        score: `${hScore}-${aScore}`,
+                        status: 'Full Time'
+                    });
                 }
 
                 if (lm.competition === 'Eliteserien') {
-                    const homeTeamStats = newStandings.find(t => t.team === getAlias(lm.homeTeam));
-                    const awayTeamStats = newStandings.find(t => t.team === getAlias(lm.awayTeam));
+                    let homeTeamStats = newStandings.find(t => t.team === getAlias(lm.homeTeam));
+                    if (!homeTeamStats) {
+                        homeTeamStats = { team: getAlias(lm.homeTeam), p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+                        newStandings.push(homeTeamStats);
+                    }
+                    
+                    let awayTeamStats = newStandings.find(t => t.team === getAlias(lm.awayTeam));
+                    if (!awayTeamStats) {
+                        awayTeamStats = { team: getAlias(lm.awayTeam), p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
+                        newStandings.push(awayTeamStats);
+                    }
                     
                     if (homeTeamStats && awayTeamStats) {
                         homeTeamStats.p += 1;
@@ -224,6 +240,7 @@ export const MatchDataProvider = ({ children }) => {
         setGlobalLeagueDefensiveHeight(payload.globalLeagueDefensiveHeight);
         setGlobalLeagueSetPieceTable(payload.globalLeagueSetPieceTable);
         setGlobalTopPerformers(payload.globalTopPerformers);
+        setGlobalLeagueStandings(payload.globalLeagueStandings);
     };
 
     // Global Stats Computation via Web Worker (with IndexedDB cache)
@@ -234,7 +251,7 @@ export const MatchDataProvider = ({ children }) => {
         (async () => {
             // Create a fingerprint from match IDs + count so cache invalidates when new matches are uploaded
             // Bump this version whenever the computation logic changes to auto-invalidate old cache
-            const CACHE_VERSION = 24;
+            const CACHE_VERSION = 25;
             const fingerprint = `v${CACHE_VERSION}::` + loadedMatches
                 .map(m => m.id)
                 .sort()
@@ -286,7 +303,7 @@ export const MatchDataProvider = ({ children }) => {
         <MatchDataContext.Provider value={{ 
             loadedMatches, derivedMatches, derivedStandings, seasonPPDA, 
             globalLeagueAttackStats, globalLeagueDefenceStats, globalLeagueTransitionStats, 
-            globalLeagueBuildUp, globalLeagueFinalThird, globalLeagueChanceCreation, globalLeagueChancesConceded, globalPossessionStyle, globalLeagueRecoveries, globalBdpLeagueStats, globalLeagueDefensiveHeight, globalLeagueSetPieceTable, globalTopPerformers,
+            globalLeagueBuildUp, globalLeagueFinalThird, globalLeagueChanceCreation, globalLeagueChancesConceded, globalPossessionStyle, globalLeagueRecoveries, globalBdpLeagueStats, globalLeagueDefensiveHeight, globalLeagueSetPieceTable, globalTopPerformers, globalLeagueStandings,
             saveNewMatch, fetchMatchEvents, refreshMatches, deleteStoredMatch 
         }}>
             {children}
