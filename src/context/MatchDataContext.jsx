@@ -234,7 +234,7 @@ export const MatchDataProvider = ({ children }) => {
         (async () => {
             // Create a fingerprint from match IDs + count so cache invalidates when new matches are uploaded
             // Bump this version whenever the computation logic changes to auto-invalidate old cache
-            const CACHE_VERSION = 23;
+            const CACHE_VERSION = 24;
             const fingerprint = `v${CACHE_VERSION}::` + loadedMatches
                 .map(m => m.id)
                 .sort()

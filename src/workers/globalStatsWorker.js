@@ -52,7 +52,7 @@ self.onmessage = async (e) => {
             };
 
             const allEvtsArrays = [];
-            const chunkSize = 10;
+            const chunkSize = 5;
             for (let i = 0; i < leagueMatches.length; i += chunkSize) {
                 const chunk = leagueMatches.slice(i, i + chunkSize);
                 const results = await Promise.all(chunk.map(m => fetchMatchData(m)));
