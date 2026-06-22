@@ -172,60 +172,7 @@ export const MatchDataProvider = ({ children }) => {
         await refreshMatches();
     };
 
-    // --- Global Stats Cache (IndexedDB) ---
-    const CACHE_DB_NAME = 'footballAnalyticsCache';
-    const CACHE_DB_VERSION = 1;
-    const CACHE_STORE_NAME = 'globalStats';
-
-    const openCacheDB = () => new Promise((resolve, reject) => {
-        const request = indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(CACHE_STORE_NAME)) {
-                db.createObjectStore(CACHE_STORE_NAME, { keyPath: 'id' });
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-
-    const getCachedStats = async (fingerprint) => {
-        try {
-            const db = await openCacheDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction(CACHE_STORE_NAME, 'readonly');
-                const store = tx.objectStore(CACHE_STORE_NAME);
-                const req = store.get('leagueStats');
-                req.onsuccess = () => {
-                    const result = req.result;
-                    if (result && result.fingerprint === fingerprint) {
-                        console.log('[Cache] ✅ Hit — loading precomputed stats instantly');
-                        resolve(result.payload);
-                    } else {
-                        console.log('[Cache] ❌ Miss — fingerprint changed, recomputing...');
-                        resolve(null);
-                    }
-                };
-                req.onerror = () => resolve(null);
-            });
-        } catch { return null; }
-    };
-
-    const saveCachedStats = async (fingerprint, payload) => {
-        try {
-            const db = await openCacheDB();
-            const tx = db.transaction(CACHE_STORE_NAME, 'readwrite');
-            const store = tx.objectStore(CACHE_STORE_NAME);
-            store.put({ id: 'leagueStats', fingerprint, payload, savedAt: Date.now() });
-            console.log('[Cache] 💾 Saved computed stats for future loads');
-        } catch (err) {
-            console.warn('[Cache] Could not save:', err);
-        }
-    };
-
     const applyPayload = (payload) => {
-        console.log("APPLYING PAYLOAD:", payload);
-        console.log("TRANSITION STATS IN PAYLOAD:", payload.globalLeagueTransitionStats);
         setGlobalLeagueAttackStats(payload.globalLeagueAttackStats);
         setGlobalLeagueDefenceStats(payload.globalLeagueDefenceStats);
         setGlobalLeagueTransitionStats(payload.globalLeagueTransitionStats);
@@ -243,58 +190,30 @@ export const MatchDataProvider = ({ children }) => {
         setGlobalLeagueStandings(payload.globalLeagueStandings);
     };
 
-    // Global Stats Computation via Web Worker (with IndexedDB cache)
+    // Fetch precomputed global stats from the server
     useEffect(() => {
         let cancelled = false;
         if (!loadedMatches || loadedMatches.length === 0) return;
 
         (async () => {
-            // Create a fingerprint from match IDs + count so cache invalidates when new matches are uploaded
-            // Bump this version whenever the computation logic changes to auto-invalidate old cache
-            const CACHE_VERSION = 25;
-            const fingerprint = `v${CACHE_VERSION}::` + loadedMatches
-                .map(m => m.id)
-                .sort()
-                .join(',') + `::${loadedMatches.length}`;
-
-            // Check indexedDB cache first
-            const cachedPayload = await getCachedStats(fingerprint);
-            if (cachedPayload && !cancelled) {
-                applyPayload(cachedPayload);
-                return;
-            }
-
-            const worker = new Worker(new URL('../workers/globalStatsWorker.js', import.meta.url), { type: 'module' });
-            
-            worker.onmessage = async (e) => {
-                if (cancelled) {
-                    worker.terminate();
-                    return;
-                }
+            try {
+                // Determine API URL (handle local dev vs production)
+                // In production, Vite proxy is gone, so we fetch directly from /api/stats/global
+                // The backend serves both frontend and API from same domain
+                const isProduction = import.meta.env.PROD;
+                const apiUrl = isProduction ? '/api/stats/global' : 'http://localhost:3001/api/stats/global';
                 
-                if (e.data.type === 'GLOBAL_STATS_SUCCESS') {
-                    const payload = e.data.payload;
-                    if (payload) {
-                        applyPayload(payload);
-                        // Save to cache for next time
-                        await saveCachedStats(fingerprint, payload);
-                    }
-                    worker.terminate();
-                } else if (e.data.type === 'GLOBAL_STATS_ERROR') {
-                    console.error("Global Stats Worker Error:", e.data.error);
-                    worker.terminate();
+                const res = await fetch(apiUrl);
+                if (!res.ok) throw new Error('Failed to fetch global stats');
+                const payload = await res.json();
+                
+                if (!cancelled && payload) {
+                    applyPayload(payload);
                 }
-            };
-
-            worker.postMessage({
-                type: 'COMPUTE_GLOBAL_STATS',
-                loadedMatches
-            });
-
-            // Cleanup on unmount
-            return () => { worker.terminate(); };
+            } catch (err) {
+                console.error("Error fetching global stats from server:", err);
+            }
         })();
-
 
         return () => { cancelled = true; };
     }, [loadedMatches]);

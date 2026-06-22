@@ -3,6 +3,21 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { 
+    calculateLeagueAttackMetrics, 
+    calculateLeagueDefenceMetrics, 
+    calculateLeagueTransitionMetrics, 
+    calculateLeagueChanceCreationStats, 
+    extractPossessionStyle,
+    extractBuildUpFromOpta,
+    extractFinalThirdEntries,
+    extractBallRecoveriesFromOpta,
+    calculateLeagueBdpStatsWorker,
+    calculateLeagueDefensiveHeightWorker,
+    calculateLeagueSetPieceTable,
+    calculateLeagueTopPerformers,
+    calculateLeagueStandingsFromEvents
+} from '../src/utils/dataMapper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +84,99 @@ app.use('/sportsdb-images', async (req, res) => {
 
 // Helper to get file path
 const getFilePath = (id) => path.join(DATA_DIR, `${id}.json`);
+
+let globalStatsCache = null;
+
+// GET /api/stats/global - Precomputes and caches global league statistics
+app.get('/api/stats/global', (req, res) => {
+    if (globalStatsCache) {
+        return res.json(globalStatsCache);
+    }
+
+    try {
+        const files = fs.readdirSync(DATA_DIR).filter(file => file.endsWith('.json'));
+        const loadedMatches = [];
+        const allEvts = [];
+
+        files.forEach(file => {
+            const content = fs.readFileSync(path.join(DATA_DIR, file), 'utf-8');
+            const matchData = JSON.parse(content);
+            const meta = { ...matchData };
+            delete meta.events;
+            loadedMatches.push(meta);
+
+            if (meta.competition !== 'Eliteserien') return;
+
+            const evts = matchData.events || [];
+            const fallbackIds = [...new Set(evts.map(ev => ev.contestantId).filter(Boolean))];
+            const homeId = meta.homeContestantId || fallbackIds[0];
+            const awayId = meta.awayContestantId || fallbackIds[1];
+
+            for (let i = 0; i < evts.length; i++) {
+                const ev = evts[i];
+                ev.matchId = meta.id;
+                ev.homeTeam = meta.homeTeam;
+                ev.awayTeam = meta.awayTeam;
+                
+                let resolvedTeamName = ev.teamName || 'Unknown';
+                if (ev.contestantId) {
+                    if (ev.contestantId === homeId) resolvedTeamName = meta.homeTeam;
+                    else if (ev.contestantId === awayId) resolvedTeamName = meta.awayTeam;
+                }
+                ev.teamName = resolvedTeamName;
+                allEvts.push(ev);
+            }
+        });
+
+        const normalizeTeamNameMatcher = (a, b) => {
+            const normA = a ? a.toLowerCase().replace(/ fk| bk| il| if| sk| fotball/gi, '').trim() : '';
+            const normB = b ? b.toLowerCase().replace(/ fk| bk| il| if| sk| fotball/gi, '').trim() : '';
+            return normA === normB || normA.includes(normB) || normB.includes(normA);
+        };
+
+        const isTeamMatchLocal = (a, b) => {
+            if (b === 'Eliteserien' || b === 'League') return true;
+            return normalizeTeamNameMatcher(a, b);
+        };
+
+        const attackStats = calculateLeagueAttackMetrics(allEvts, loadedMatches, normalizeTeamNameMatcher);
+        const defenceStats = calculateLeagueDefenceMetrics(allEvts, loadedMatches, normalizeTeamNameMatcher);
+        const transitionStats = calculateLeagueTransitionMetrics(allEvts, loadedMatches, normalizeTeamNameMatcher);
+        const chancesStats = calculateLeagueChanceCreationStats(allEvts, loadedMatches, isTeamMatchLocal);
+        const possessionStyle = extractPossessionStyle(allEvts);
+        const buildUpStats = extractBuildUpFromOpta(allEvts, ['Eliteserien'], isTeamMatchLocal);
+        const finalThirdStats = extractFinalThirdEntries(allEvts, ['Eliteserien'], isTeamMatchLocal);
+        const recoveriesStats = extractBallRecoveriesFromOpta(allEvts, ['Eliteserien'], isTeamMatchLocal);
+        
+        const bdpLeagueStats = calculateLeagueBdpStatsWorker(allEvts, loadedMatches, isTeamMatchLocal);
+        const leagueDefensiveHeight = calculateLeagueDefensiveHeightWorker(allEvts, loadedMatches, isTeamMatchLocal);
+        const setPieceTable = calculateLeagueSetPieceTable(allEvts, loadedMatches, isTeamMatchLocal);
+        const topPerformers = calculateLeagueTopPerformers(allEvts);
+        const realStandings = calculateLeagueStandingsFromEvents(allEvts, loadedMatches);
+
+        globalStatsCache = {
+            globalLeagueAttackStats: attackStats,
+            globalLeagueDefenceStats: defenceStats,
+            globalLeagueTransitionStats: transitionStats,
+            globalLeagueChanceCreation: chancesStats.created,
+            globalLeagueChancesConceded: chancesStats.conceded,
+            globalPossessionStyle: possessionStyle,
+            globalLeagueBuildUp: buildUpStats,
+            globalLeagueFinalThird: finalThirdStats,
+            globalLeagueRecoveries: recoveriesStats,
+            globalBdpLeagueStats: bdpLeagueStats,
+            globalLeagueDefensiveHeight: leagueDefensiveHeight,
+            globalLeagueSetPieceTable: setPieceTable,
+            globalTopPerformers: topPerformers,
+            globalLeagueStandings: realStandings
+        };
+
+        res.json(globalStatsCache);
+    } catch (error) {
+        console.error('Error computing global stats:', error);
+        res.status(500).json({ error: 'Failed to compute global stats' });
+    }
+});
 
 // GET /api/matches - Returns only the metadata for all matches
 app.get('/api/matches', (req, res) => {
@@ -203,6 +311,7 @@ app.post('/api/matches', (req, res) => {
         }
         
         fs.writeFileSync(filePath, JSON.stringify(finalData, null, 2), 'utf-8');
+        globalStatsCache = null; // Invalidate cache
         res.status(201).json({ success: true, id: matchData.id });
     } catch (error) {
         console.error('Error saving match:', error);
@@ -221,6 +330,7 @@ app.delete('/api/matches/:id', (req, res) => {
         const filePath = getFilePath(req.params.id);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
+            globalStatsCache = null; // Invalidate cache
             res.json({ success: true });
         } else {
             res.status(404).json({ error: 'Match not found' });
