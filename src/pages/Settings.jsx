@@ -467,7 +467,15 @@ const Settings = () => {
         const ALL_VISUALS = ['AttackRadarChart', 'FieldTiltMap', 'PassNetworkMap', 'OppHalfEntriesMap', 'FinalThirdEntriesMap', 'LeagueChanceCreation', 'ShotMap', 'BuildUpMap', 'MatchMomentumChart', 'DefenceRadarChart', 'BallRecoveryMap', 'AverageDefensiveActionHeight', 'BlockCompactness', 'PpdaCard', 'BdpChart', 'transitionsRadar', 'TransitionMap', 'DefensiveTransitionMap', 'RecoveryZonesMap', 'TransitionTimeChart'];
         try {
             const saved = localStorage.getItem('publishedVisualizations');
-            return saved !== null ? JSON.parse(saved) : ALL_VISUALS;
+            if (saved !== null) {
+                const parsed = JSON.parse(saved);
+                const merged = [...new Set([...parsed, ...ALL_VISUALS.filter(v => !parsed.includes(v))])];
+                if (merged.length !== parsed.length) {
+                    localStorage.setItem('publishedVisualizations', JSON.stringify(merged));
+                }
+                return merged;
+            }
+            return ALL_VISUALS;
         } catch {
             return ALL_VISUALS;
         }

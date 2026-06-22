@@ -201,7 +201,13 @@ const MatchAnalysis = ({ onViewChange }) => {
         try {
             const saved = localStorage.getItem('publishedVisualizations');
             if (saved !== null) {
-                setPublishedVisuals(JSON.parse(saved));
+                const parsed = JSON.parse(saved);
+                // Merge in any new visuals that were added after the user last saved
+                const merged = [...new Set([...parsed, ...ALL_VISUALS.filter(v => !parsed.includes(v))])];
+                if (merged.length !== parsed.length) {
+                    localStorage.setItem('publishedVisualizations', JSON.stringify(merged));
+                }
+                setPublishedVisuals(merged);
             } else {
                 setPublishedVisuals(ALL_VISUALS);
             }
@@ -1308,7 +1314,7 @@ const MatchAnalysis = ({ onViewChange }) => {
                                                                     totalTeams={16}
                                                                     getBadge={getBadge}
                                                                     selectedFixturesCount={teamMatchIds?.length || 0}
-                                                                    leagueData={Object.entries(globalLeagueDefenceStats?.leagueData || {}).filter(([name]) => name !== 'League Average').map(([name, data]) => ({ teamName: name, ppda: data.raw?.ppda || 0 })).sort((a, b) => a.ppda - b.ppda)}
+                                                                    leagueData={Object.entries(globalLeagueDefenceStats?.leagueData || {}).filter(([name]) => name !== 'League Average').map(([name, data]) => ({ teamName: name, ppda: data.raw?.ppda || 0 })).sort((a, b) => a.ppda - b.ppda).map((t, i) => ({ ...t, rank: i + 1 }))}
                                                                 />
                                                                 </GlobalErrorBoundary>
                                                             </div>
