@@ -42,18 +42,27 @@ export const getSeasonPPDA = async () => {
     }
 };
 
-export const getMatchEvents = async (id) => {
-    try {
-        const response = await fetch(`${API_URL}/${id}`);
-        if (!response.ok) {
+export const getMatchEvents = async (id, retries = 3) => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            if (response.ok) {
+                return await response.json();
+            }
             if (response.status === 404) return null;
-            throw new Error('Failed to fetch match events from backend');
+            
+            // If rate limited or server error, throw to trigger retry
+            throw new Error(`Failed to fetch match events from backend (Status: ${response.status})`);
+        } catch (error) {
+            if (attempt === retries - 1) {
+                console.error("Error fetching match events after retries:", error);
+                return null;
+            }
+            // Wait before retrying (exponential backoff: 1s, 2s)
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
         }
-        return await response.json();
-    } catch (error) {
-        console.error("Error fetching match events:", error);
-        return null;
     }
+    return null;
 };
 
 export const deleteMatch = async (id) => {

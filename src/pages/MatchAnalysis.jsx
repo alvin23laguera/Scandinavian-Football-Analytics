@@ -297,32 +297,27 @@ const MatchAnalysis = ({ onViewChange }) => {
             });
             allSelectedIds = [...new Set(allSelectedIds)];
             
-            for (let id of allSelectedIds) {
+            const fetchMatchData = async (id) => {
                 let matchMeta = loadedMatches.find(m => m.id === id);
-                
-                // If not found by direct ID, check if it's a schedule match that we can link to an uploaded DataHub match
                 if (!matchMeta && fixtureContext && fixtureContext.id === id) {
                     matchMeta = loadedMatches.find(m => 
                         isTeamMatch(m.homeTeam, fixtureContext.homeTeam) &&
                         isTeamMatch(m.awayTeam, fixtureContext.awayTeam)
                     );
                     if (matchMeta) {
-                        id = matchMeta.id; // Override id so fetchMatchEvents uses the real DB ID
+                        id = matchMeta.id;
                     }
                 }
 
                 let evts = await fetchMatchEvents(id);
 
                 if (evts && matchMeta) {
-                    // Use explicitly stored contestant IDs when available (post-migration).
                     const fallbackIds = [...new Set(evts.map(e => e.contestantId).filter(Boolean))];
                     const homeId = matchMeta.homeContestantId || fallbackIds[0];
                     const awayId = matchMeta.awayContestantId || fallbackIds[1];
 
-                    const enrichedEvts = evts.map(e => {
+                    return evts.map(e => {
                         let resolvedTeamName = e.teamName || 'Unknown';
-                        
-                        // Universally resolve teamName using contestantId and Match Meta
                         if (e.contestantId) {
                             if (e.contestantId === homeId) resolvedTeamName = matchMeta.homeTeam;
                             else if (e.contestantId === awayId) resolvedTeamName = matchMeta.awayTeam;
@@ -330,16 +325,25 @@ const MatchAnalysis = ({ onViewChange }) => {
 
                         return { 
                             ...e, 
-                            matchId: id, // Critical: keep track of source match
+                            matchId: id, 
                             teamName: resolvedTeamName,
                             homeTeam: matchMeta.homeTeam,
                             awayTeam: matchMeta.awayTeam
                         };
                     });
-                    allEvts = allEvts.concat(enrichedEvts);
                 } else if (evts) {
-                    allEvts = allEvts.concat(evts);
+                    return evts;
                 }
+                return [];
+            };
+
+            const CHUNK_SIZE = 5;
+            for (let i = 0; i < allSelectedIds.length; i += CHUNK_SIZE) {
+                const chunk = allSelectedIds.slice(i, i + CHUNK_SIZE);
+                const results = await Promise.all(chunk.map(id => fetchMatchData(id)));
+                results.forEach(evts => {
+                    allEvts = allEvts.concat(evts);
+                });
             }
             setStoredEvents(allEvts);
         };
